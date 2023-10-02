@@ -39,6 +39,10 @@ if directory[-1] != '/':
 df['relative_path'] =  df['local_path'].str.removeprefix(directory)
 df['filename'] = [os.path.basename(i) for i in df['relative_path']]
 
+# Card and date (folder structure dependent)
+# df['card'] = [c.split('/')[0] for c in df['relative_path']]
+# df['date'] = [d.split('/')[1] for d in df['relative_path']]
+
 
 df = df.drop('local_path', axis = 1)
 
