@@ -159,6 +159,8 @@ def annotate(audio_dir,
              path_column = 'relative_path',
              notes_column = 'notes',
              custom_annotation_column = 'additional_annotation',
+             skip_if_pos_card_date = False,
+             mark_at_s = [0,10],
              sort_by = None, 
              date_filter = [], 
              card_filter = [], 
@@ -175,6 +177,7 @@ def annotate(audio_dir,
         dates_filter (list (str), optional): List dates to be annotated (skip others). Defaults to empty list, [].
         card_filter (list (str), optional): List cards to be annotated (skip others). Defaults to empty list, [].
         custom_annotations_dict (dict, optional): _description_. Defaults to None.
+        skip_if_pos_card_date (bool, optional): If positive clip already flagged in that date/card skip. 
         n_sample (int, optional): Sample from valid rows. Defaults to None.
         dry_run (bool, optional):  Not export outputs. Defaults to False.
     
@@ -191,14 +194,20 @@ def annotate(audio_dir,
                                custom_annotation_column = custom_annotation_column,
                                sort_by = sort_by, 
                                dry_run = dry_run)
+    # scores_df = scores_df.set_index(path_column)
     
+    # Skip of data ot card filter provided
     if date_filter or card_filter:
         scores_df['skip'] = (scores_df['date'].isin(date_filter)) | (scores_df['card'].isin(card_filter))
     else:
         scores_df['skip'] = False
     
+    # Skip if skip_if_present columns provided.
+    
     # Create absolute path index
+    # scores_df['absolute_path'] = audio_dir + '/' + scores_df['relative_path']
     scores_df['absolute_path'] = audio_dir + '/' + scores_df.index
+    
     # scores_df = scores_df.set_index('absolute_path')
     
     valid_rows = scores_df[~scores_df[annotation_column].notnull()]
@@ -211,7 +220,11 @@ def annotate(audio_dir,
     n_skiped_clips = sum(scores_df['skip'])
     n_clips_filtered = n_clips - n_skiped_clips
     
-    for idx,row in valid_rows.iterrows():
+    # for idx,row in valid_rows.iterrows():
+    while len(valid_rows) > 0:
+        row = valid_rows.iloc[0]
+        idx = valid_rows.index[0]
+    
         # Clear previous plot if any
         ipd.clear_output(wait = True)
         
@@ -230,15 +243,33 @@ def annotate(audio_dir,
             print(f"Clip: {idx}")
         
             # plot_clip(idx, mark_at_s = [3, 7])
-            plot_clip(row['absolute_path'], mark_at_s = [0, 5])
+            plot_clip(row['absolute_path'], mark_at_s = mark_at_s)
             time.sleep(.1) # Added delay for stability (hopefully)
             annotations = user_input(valid_annotations, custom_annotations_dict = custom_annotations_dict, positive_annotation = '1')
-            
+
             scores_df.at[idx, annotation_column] = annotations[0]
             scores_df.at[idx, custom_annotation_column] = annotations[1]
             scores_df.at[idx, notes_column]= annotations[2]
+            
+            if skip_if_pos_card_date:
+                print('Skipping date and card')
+                assert set(['card','date']).issubset(scores_df.columns), "'card' and/or 'date' colums not present."
+                if scores_df.at[idx, annotation_column] == '1':
+                    card_i = row['card']
+                    date_i = row['date']
+                    skip_condition = (scores_df['card'] == card_i) & (scores_df['date'] == date_i) & (scores_df[annotation_column].isna())
+                    scores_df.loc[skip_condition,annotation_column] = 'skipped'
+        
+        # print(scores_df)
+        # time.sleep(10) # Added delay for stability (hopefully)
         
         if not dry_run: 
-            save_annotations_file(scores_df.drop(['skip', 'absolute_path'], axis = 1), scores_csv_path)
+            # save_annotations_file(scores_df.drop(['skip', 'absolute_path'], axis = 1), scores_csv_path)
+            # scores_df = scores_df.reset_index()
+            save_annotations_file(scores_df.drop(['absolute_path'], axis = 1), scores_csv_path)
+        
+        # Update params
+        n_clips_remaining = len(scores_df[~scores_df[annotation_column].notnull()])
+        valid_rows = scores_df[~scores_df[annotation_column].notnull()]
     
     return scores_df
