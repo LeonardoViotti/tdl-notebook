@@ -8,7 +8,38 @@ import IPython.display as ipd
 import os
 import time
 
-from utils import find_path
+# from utils import find_path
+
+#-----------------------------------------------------------------------------------------------------
+# Utils
+
+def find_path(file_name, path):
+    """ Searches [path] for [file_name]
+    Args:
+        file_name (str): File name with extention
+        path (str): Relative/Absolute search dir path
+
+    Returns:
+        (str): Absolute filepath for [file_name]
+    """
+    
+    files = []
+    for dir,_,_ in os.walk(path):
+        files.extend(glob(os.path.join(dir,file_name)))
+    
+    assert len(files) == 1, f"Multiple files found for {file_name}! {files}"
+    
+    return files[0]
+
+
+def create_relative_path(scores_df):
+    scores_df = scores_df.drop('Unnamed: 0', axis = 1)
+    scores_df['relative_path'] = scores_df['file'].str.split('/', expand = True).iloc[:,-2] + '/' + scores_df['clip']
+    return scores_df
+
+
+#-----------------------------------------------------------------------------------------------------
+# Core functions
 
 
 def plot_clip(clip_path,  directory = None, bandpass = [1, 10000], mark_at_s = None ):
@@ -159,7 +190,7 @@ def annotate(audio_dir,
              path_column = 'relative_path',
              notes_column = 'notes',
              custom_annotation_column = 'additional_annotation',
-             skip_if_pos_card_date = False,
+             skip_cols = None,
              mark_at_s = [0,10],
              sort_by = None, 
              date_filter = [], 
@@ -177,7 +208,7 @@ def annotate(audio_dir,
         dates_filter (list (str), optional): List dates to be annotated (skip others). Defaults to empty list, [].
         card_filter (list (str), optional): List cards to be annotated (skip others). Defaults to empty list, [].
         custom_annotations_dict (dict, optional): _description_. Defaults to None.
-        skip_if_pos_card_date (bool, optional): If positive clip already flagged in that date/card skip. 
+        skip_cols (str, optional): Column names for skipping clips if a positive clip already flagged in a values. 
         n_sample (int, optional): Sample from valid rows. Defaults to None.
         dry_run (bool, optional):  Not export outputs. Defaults to False.
     
@@ -251,14 +282,29 @@ def annotate(audio_dir,
             scores_df.at[idx, custom_annotation_column] = annotations[1]
             scores_df.at[idx, notes_column]= annotations[2]
             
-            if skip_if_pos_card_date:
-                print('Skipping date and card')
-                assert set(['card','date']).issubset(scores_df.columns), "'card' and/or 'date' colums not present."
-                if scores_df.at[idx, annotation_column] == '1':
-                    card_i = row['card']
-                    date_i = row['date']
-                    skip_condition = (scores_df['card'] == card_i) & (scores_df['date'] == date_i) & (scores_df[annotation_column].isna())
-                    scores_df.loc[skip_condition,annotation_column] = 'skipped'
+            # if skip_if_pos_card_date:
+            #     print('Skipping date and card')
+            #     assert set(['card','date']).issubset(scores_df.columns), "'card' and/or 'date' colums not present."
+            #     if scores_df.at[idx, annotation_column] == '1':
+            #         card_i = row['card']
+            #         date_i = row['date']
+            #         skip_condition = (scores_df['card'] == card_i) & (scores_df['date'] == date_i) & (scores_df[annotation_column].isna())
+            #         scores_df.loc[skip_condition,annotation_column] = 'skipped'
+            if skip_cols:
+                # Create bolean series if row equal to current value of skip col
+                skip_bool_list = []
+                for skip_col in skip_cols:
+                    skip_value = row[skip_col]
+                    skip_bool = scores_df[skip_col] == skip_value
+                    skip_bool_list.append(skip_bool)
+                
+                # Add condition to skip that it cannot already be annotated
+                skip_bool_list.append(scores_df[annotation_column].isna())
+                
+                # Collapse bool series if value is the same as all skip coluns
+                skip_bool_series = pd.concat(skip_bool_list, axis=1).all(axis=1)
+                
+                scores_df.loc[skip_bool_series,annotation_column] = 'skipped'
         
         # print(scores_df)
         # time.sleep(10) # Added delay for stability (hopefully)
