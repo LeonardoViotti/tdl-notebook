@@ -18,7 +18,7 @@ For more information, please visit https://www.kitzeslab.org/
      ├── clips/
      └── scripts/
 ```
-4. Upload `annotation.py` and `utils.py` scripts to `my-tdl-folder/scripts/`
+4. Upload `annotation.py` scripts to `my-tdl-folder/scripts/`
 5. If you already have clips and a scores sheet upload them to `my-tdl-folder/clips/`
 
 IMPORTANT: You can name [*your-folder-name-here*] as you like, as long as that is reflected in the Load data section of the notebook.
@@ -41,25 +41,23 @@ At the first run, `tdl_colab.ipynb` will create a copy of `_scores.csv` named `_
 
 Annotation options:
 
-`audio_dir (str)`: Directory containing audio clips to be annotated.
+ - `audio_dir (str)`: Directory containing audio clips to be annotated.
 
-`valid_annotations`: List of valid options for user. Defaults to ["0", "1", "u"].
+ - `valid_annotations`: List of valid options for user. Defaults to ["0", "1", "u"].
 
-`scores_filename`: Detection scores CSV filename. This function assumes it is in [audio_dir]. Defaults to "_scores.csv".
+ - `scores_filename`: Detection scores CSV filename. This function assumes it is in [audio_dir]. Defaults to "_scores.csv".
 
-`annotation_column`: Annotation column name. Defaults to 'annotation'.
+ - `annotation_column`: Annotation column name. Defaults to 'annotation'.
 
-`dates_filter`: List dates to be annotated (skip others). Defaults to empty list, [].
+ - `dates_filter`: List dates to be annotated (skip others). Defaults to empty list, [].
 
-`card_filter`: List cards to be annotated (skip others). Defaults to empty list, [].
+ - `card_filter`: List cards to be annotated (skip others). Defaults to empty list, [].
 
-`custom_annotations_dict`: _description_. Defaults to None.
+ - `skip_cols`: Column names for skipping clips if a positive clip already flagged. 
 
-`skip_cols`: Column names for skipping clips if a positive clip already flagged. 
+ - `n_sample`: Sample from valid rows. Defaults to None.
 
-`n_sample`: Sample from valid rows. Defaults to None.
-
-`dry_run`:  Not export outputs. Defaults to False.
+ - `dry_run`:  Not export outputs. Defaults to False.
 
 
 ## Usage instructions
