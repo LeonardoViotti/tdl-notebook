@@ -39,6 +39,29 @@ At the first run, `tdl_colab.ipynb` will create a copy of `_scores.csv` named `_
 4. Share the link to the modified notebook with the listener.
 
 
+Annotation options:
+
+`audio_dir (str)`: Directory containing audio clips to be annotated.
+
+`valid_annotations`: List of valid options for user. Defaults to ["0", "1", "u"].
+
+`scores_filename`: Detection scores CSV filename. This function assumes it is in [audio_dir]. Defaults to "_scores.csv".
+
+`annotation_column`: Annotation column name. Defaults to 'annotation'.
+
+`dates_filter`: List dates to be annotated (skip others). Defaults to empty list, [].
+
+`card_filter`: List cards to be annotated (skip others). Defaults to empty list, [].
+
+`custom_annotations_dict`: _description_. Defaults to None.
+
+`skip_cols`: Column names for skipping clips if a positive clip already flagged. 
+
+`n_sample`: Sample from valid rows. Defaults to None.
+
+`dry_run`:  Not export outputs. Defaults to False.
+
+
 ## Usage instructions
 
 ### 1. Google Drive set-up
