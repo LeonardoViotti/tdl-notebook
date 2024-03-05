@@ -193,6 +193,7 @@ def annotate(audio_dir,
              notes_column = 'notes',
              custom_annotation_column = 'additional_annotation',
              skip_cols = None,
+             n_positives = 1,
              mark_at_s = [0,10],
              sort_by = None, 
              date_filter = [], 
@@ -210,7 +211,8 @@ def annotate(audio_dir,
         dates_filter (list (str), optional): List dates to be annotated (skip others). Defaults to empty list, [].
         card_filter (list (str), optional): List cards to be annotated (skip others). Defaults to empty list, [].
         custom_annotations_dict (dict, optional): _description_. Defaults to None.
-        skip_cols (str, optional): Column names for skipping clips if a positive clip already flagged. 
+        skip_cols (str, optional): Column names for skipping clips if a positive clip already flagged.
+        n_positives (int, optional): Number of positives needed before skipping if skip_cols is provided. Defaults to 1.
         n_sample (int, optional): Sample from valid rows. Defaults to None.
         dry_run (bool, optional):  Not export outputs. Defaults to False.
     
@@ -287,7 +289,15 @@ def annotate(audio_dir,
             
             if skip_cols:
                 assert set(skip_cols).issubset(scores_df.columns), "skip_cols not present!"
-                if scores_df.at[idx, annotation_column] == '1':
+                assert isinstance(skip_cols, list), f'skip_cols argument must be a list!'
+                
+                # Update the cumulative sum every iteration
+                scores_df['num_annotation'] =  pd.to_numeric(scores_df[annotation_column], errors='coerce').fillna(0).astype(int)
+                scores_df['cum_sum'] = scores_df.groupby(skip_cols)['num_annotation'].cumsum()
+                
+                
+                # if scores_df.at[idx, annotation_column] == '1':
+                if scores_df.at[10, 'cum_sum'] > n_positives:
                     # Create bolean series if row equal to current value of skip col
                     skip_bool_list = []
                     for skip_col in skip_cols:
@@ -309,7 +319,7 @@ def annotate(audio_dir,
         if not dry_run: 
             # save_annotations_file(scores_df.drop(['skip', 'absolute_path'], axis = 1), scores_csv_path)
             # scores_df = scores_df.reset_index()
-            save_annotations_file(scores_df.drop(['skip', 'absolute_path'], axis = 1), scores_csv_path)
+            save_annotations_file(scores_df.drop(['skip', 'absolute_path', 'num_annotation', 'cum_sum'], axis = 1), scores_csv_path)
         
         # Update params
         n_clips_remaining = len(scores_df[~scores_df[annotation_column].notnull()])
