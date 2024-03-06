@@ -163,9 +163,9 @@ def load_scores_df(scores_csv_path,
     return scores_df, annotation_csv_exists
 
 
-def annotate(audio_dir, 
+def annotate(scores_file = "_scores.csv",
+             audio_dir = None, 
              valid_annotations = ["0", "1", "u"],
-             scores_filename = "_scores.csv", 
              annotation_column = 'annotation',
             #  path_column = 'relative_path',
              index_cols = 'relative_path',
@@ -173,8 +173,7 @@ def annotate(audio_dir,
              custom_annotation_column = 'additional_annotation',
              skip_cols = None,
              n_positives = 1,
-             mark_at_s = [0,10],
-            #  mark_at_s = None,
+             mark_at_s = None,
              sort_by = None, 
              date_filter = [], 
              card_filter = [], 
@@ -184,9 +183,9 @@ def annotate(audio_dir,
     """Loops through detection scores data that hasn't been annated and aks user to input annotations.
     
     Args:
-        audio_dir (str): Directory containing audio clips to be annotated.
+        scores_file (str, optional): Detection scores CSV file path or filename if it is in [audio_dir]. Defaults to "_scores.csv".
+        audio_dir (str): If using relative file paths and [scores_file] in [audio_dir]. It should be a directory containing audio clips to be annotated.  Defaults to None.
         valid_annotations (list, optional): List of valid options for user. Defaults to ["0", "1", "u"].
-        scores_filename (str, optional): Detection scores CSV filename. This function assumes it is in [audio_dir]. Defaults to "_scores.csv".
         annotation_column (str, optional): Annotation column name. Defaults to 'annotation'.
         index_cols (str, optional): Either ["path_to_clip"] or ["path_to_audio", "clip_start_time", "clip_end_time"]. Defaults to 'relative_path'.
         notes_column (str, optional): Column name for notes. Defaults to 'notes'.
@@ -202,13 +201,18 @@ def annotate(audio_dir,
         dry_run (bool, optional):  Not export outputs. Defaults to False.
     
     Exports:
-        Every iteration exports a file named [scores_filename]_annotations.csv to [audio_dir] 
+        Every iteration exports a file named [scores_file]_annotations.csv to [audio_dir] 
         
     Returns:
         pd.DataFrame with annotations
     """
     
-    scores_csv_path = os.path.join(audio_dir, scores_filename)
+    # If using relative file paths
+    if audio_dir:
+        scores_csv_path = os.path.join(audio_dir, scores_file)
+    else:
+        scores_csv_path = scores_file
+    
     
     scores_df, annotation_csv_exists = load_scores_df(scores_csv_path,
                                annotation_column = annotation_column,
@@ -236,6 +240,9 @@ def annotate(audio_dir,
     n_skiped_clips = sum(scores_df['skip'])
     n_clips_filtered = n_clips - n_skiped_clips
     
+    # Placeholder for cumulative sum of positives
+    current_cum_sum = None
+    
     # for idx,row in valid_rows.iterrows():
     while len(valid_rows) > 0:
         row = valid_rows.iloc[0]
@@ -258,6 +265,9 @@ def annotate(audio_dir,
         else:
             print(f"Clip: {idx}")
             
+            if current_cum_sum is not None:
+                print(f'{current_cum_sum.item()} positives out of {n_positives} for this ' + f'{" and ".join(str(col) for col in skip_cols)}')
+            
             if len(idx) == 1: # Assume it is a path for an already trimed clip
                 plot_clip(idx, mark_at_s = mark_at_s)
             elif len(idx) == 3:
@@ -278,12 +288,16 @@ def annotate(audio_dir,
                 assert isinstance(skip_cols, list), f'skip_cols argument must be a list!'
                 
                 # Update the cumulative sum every iteration
-                # scores_df['num_annotation'] =  pd.to_numeric(scores_df[annotation_column], errors='coerce').fillna(0).astype(int)
-                scores_df['num_annotation'] =  (~scores_df[annotation_column].isna()).astype(int)
+                
+                # Colum that counts all anotations greater than 0
+                scores_df['num_annotation'] =  (pd.to_numeric(scores_df[annotation_column], errors='coerce').fillna(0) > 0).astype(int)
+                # scores_df['num_annotation'] =  (~scores_df[annotation_column].isna()).astype(int)
                 scores_df['cum_sum'] = scores_df.groupby(skip_cols)['num_annotation'].cumsum()
                 
                 # if scores_df.at[idx, annotation_column] == '1':
-                if (scores_df.loc[idx, 'cum_sum'] > n_positives).item():
+                current_cum_sum = scores_df.loc[idx, 'cum_sum']
+                if (current_cum_sum > n_positives).item():
+                    
                     # Create bolean series if row equal to current value of skip col
                     skip_bool_list = []
                     for skip_col in skip_cols:
