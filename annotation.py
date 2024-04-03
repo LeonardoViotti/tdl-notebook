@@ -168,7 +168,7 @@ def annotate(scores_file = "_scores.csv",
              valid_annotations = ["0", "1", "u"],
              annotation_column = 'annotation',
             #  path_column = 'relative_path',
-             index_cols = 'relative_path',
+             index_cols = ['relative_path'],
              notes_column = 'notes',
              custom_annotation_column = 'additional_annotation',
              skip_cols = None,
@@ -271,9 +271,9 @@ def annotate(scores_file = "_scores.csv",
             if current_cum_sum is not None:
                 print(f'{current_cum_sum.item()} positives out of {n_positives} for this ' + f'{" and ".join(str(col) for col in skip_cols)}')
             
-            if len(idx) == 1: # Assume it is a path for an already trimed clip
+            if len(index_cols) == 1: # Assume it is a path for an already trimed clip
                 plot_clip(idx, mark_at_s = mark_at_s)
-            elif len(idx) == 3:
+            elif len(index_cols) == 3:
                 plot_clip(idx[0], idx[1], idx[2], mark_at_s = mark_at_s)
             else:
                 raise Exception('index_cols must be either ["path_to_clip"] or ["path_to_audio", "clip_start_time", "clip_end_time"]')
