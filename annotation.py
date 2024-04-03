@@ -222,6 +222,10 @@ def annotate(scores_file = "_scores.csv",
                                sort_by = sort_by, 
                                dry_run = dry_run)
     
+    # Add placeholder for skip intermediate columns (won't be exported)
+    scores_df['num_annotation'] = np.NaN
+    scores_df['cum_sum'] = np.NaN
+    
     # Skip of data ot card filter provided
     if date_filter or card_filter:
         scores_df['skip'] = (scores_df['date'].isin(date_filter)) | (scores_df['card'].isin(card_filter))
@@ -229,7 +233,6 @@ def annotate(scores_file = "_scores.csv",
         scores_df['skip'] = False
     
     # Skip if skip_if_present columns provided.
-    
     valid_rows = scores_df[~scores_df[annotation_column].notnull()]
     if n_sample is not None:
         valid_rows = valid_rows.sample(n_sample)
@@ -312,6 +315,7 @@ def annotate(scores_file = "_scores.csv",
                     skip_bool_series = pd.concat(skip_bool_list, axis=1).all(axis=1)
                     
                     scores_df.loc[skip_bool_series,annotation_column] = 'skipped'
+                
         if not dry_run: 
             save_annotations_file(scores_df.drop(['skip', 'num_annotation', 'cum_sum'], axis = 1), scores_csv_path)
             # save_annotations_file(scores_df.drop(['skip'], axis = 1), scores_csv_path)
