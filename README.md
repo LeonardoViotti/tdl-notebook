@@ -25,9 +25,15 @@ IMPORTANT: You can name [*your-folder-name-here*] as you like, as long as that i
 
 ### 2. Creating clips and _scores.csv file
 
-The notebook expects an input file named `_scores.csv` **located in the same folder as the clips** with the following structure:
-- A row for each clip to be listened to.
-- A column called `relative_path` containing paths relative to [*your-folder-name-here*]
+The notebook expects an input file named `_scores.csv` **located in the same folder as the clips** containing a row for each clip to be listened to. 
+
+Columns:
+ - `relative_path`:  containing paths relative to [*your-folder-name-here*] to audio files.
+ - `start_time` (optional): If `_scores.csv` contains paths for longer audio files (not individual clip files), use this to specify the start of each clip.
+ - `end_time` (optional): If `_scores.csv` contains paths for longer audio files (not individual clip files), use this to specify the start of each clip.
+ - `date` (optional): string dates that can be used to filter rows with `dates_filter` argument (see below.)
+ - `card` (optional): recorder SD card id that can be used to filter rows with `card_filter` argument (see below.)
+ 
 
 At the first run, `tdl_colab.ipynb` will create a copy of `_scores.csv` named `_scores_annotations.csv`. This new file will contain the new columns for annotations and notes and is updated after each clip annotation.
 
