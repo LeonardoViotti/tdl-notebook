@@ -35,6 +35,16 @@ def plot_clip(audio_path,
         end_buffered = end + buffer
         dur = end_buffered - st_buffered
         audio = Audio.from_file(audio_path, offset=st_buffered, duration=dur).bandpass(bandpass[0], bandpass[1], order=10)
+        
+        # Automatically mark original clip boundaries when buffer is used
+        if mark_at_s is None:
+            # Calculate relative positions of original boundaries within buffered audio
+            original_st_relative = st - st_buffered
+            original_end_relative = end - st_buffered
+            mark_at_s = [original_st_relative, original_end_relative]
+        else:
+            # If mark_at_s is provided, adjust it relative to the buffered start
+            mark_at_s = [m - st_buffered for m in mark_at_s]
     else:
         # Original behavior
         dur = end - st

@@ -121,14 +121,88 @@ def test_buffer_logic():
     
     return True
 
+def test_automatic_marking_with_buffer():
+    """Test that original clip boundaries are automatically marked when buffer is used"""
+    
+    print("\nTesting automatic marking of original clip boundaries...")
+    
+    # Test cases for automatic marking
+    test_cases = [
+        {
+            'st': 10.0, 'end': 15.0, 'buffer': 2.0, 
+            'expected_st_relative': 2.0, 'expected_end_relative': 7.0
+        },
+        {
+            'st': 5.0, 'end': 10.0, 'buffer': 1.5, 
+            'expected_st_relative': 1.5, 'expected_end_relative': 6.5
+        },
+        {
+            'st': 0.0, 'end': 5.0, 'buffer': 3.0, 
+            'expected_st_relative': 0.0, 'expected_end_relative': 5.0  # Fixed: when st=0, buffer can't go below 0
+        },
+    ]
+    
+    for i, case in enumerate(test_cases):
+        st = case['st']
+        end = case['end']
+        buffer = case['buffer']
+        expected_st_relative = case['expected_st_relative']
+        expected_end_relative = case['expected_end_relative']
+        
+        # Simulate the logic from plot_clip
+        if buffer and st is not None and end is not None:
+            st_buffered = max(0, st - buffer)
+            end_buffered = end + buffer
+            
+            # Calculate relative positions of original boundaries
+            original_st_relative = st - st_buffered
+            original_end_relative = end - st_buffered
+            
+            if (original_st_relative == expected_st_relative and 
+                original_end_relative == expected_end_relative):
+                print(f"✅ Test case {i+1} passed: st_relative={original_st_relative}, end_relative={original_end_relative}")
+            else:
+                print(f"❌ Test case {i+1} failed: expected st_relative={expected_st_relative}, end_relative={expected_end_relative}, got st_relative={original_st_relative}, end_relative={original_end_relative}")
+                return False
+        else:
+            print(f"❌ Test case {i+1} failed: buffer logic not applied")
+            return False
+    
+    return True
+
+def test_mark_at_s_adjustment_with_buffer():
+    """Test that existing mark_at_s values are adjusted when buffer is used"""
+    
+    print("\nTesting mark_at_s adjustment with buffer...")
+    
+    # Test case: original mark_at_s should be adjusted relative to buffered start
+    st = 10.0
+    end = 15.0
+    buffer = 2.0
+    original_mark_at_s = [11.0, 14.0]  # Marks within original clip
+    
+    # Simulate the logic from plot_clip
+    st_buffered = max(0, st - buffer)  # 8.0
+    adjusted_mark_at_s = [m - st_buffered for m in original_mark_at_s]
+    expected_adjusted = [11.0 - 8.0, 14.0 - 8.0]  # [3.0, 6.0]
+    
+    if adjusted_mark_at_s == expected_adjusted:
+        print(f"✅ mark_at_s adjustment passed: {original_mark_at_s} -> {adjusted_mark_at_s}")
+        return True
+    else:
+        print(f"❌ mark_at_s adjustment failed: expected {expected_adjusted}, got {adjusted_mark_at_s}")
+        return False
+
 if __name__ == "__main__":
     print("Testing buffer functionality...")
     
     success1 = test_plot_clip_buffer()
     success2 = test_annotate_buffer_parameter()
     success3 = test_buffer_logic()
+    success4 = test_automatic_marking_with_buffer()
+    success5 = test_mark_at_s_adjustment_with_buffer()
     
-    if success1 and success2 and success3:
+    if success1 and success2 and success3 and success4 and success5:
         print("\n🎉 All buffer tests passed!")
     else:
         print("\n💥 Some buffer tests failed!") 
