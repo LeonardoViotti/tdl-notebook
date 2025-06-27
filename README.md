@@ -1,10 +1,89 @@
 # Top Down Listening notebook (Colab)
 
-This contains scrips and a Google Colab notebook for listening to audio clips and labeling them (Top-down listening). This is designed as part of a processing pipeline for data collected using Autonomous recording units (ARUs).
+This contains scripts and a Google Colab notebook for listening to audio clips and labeling them (Top-down listening). This is designed as part of a processing pipeline for data collected using Autonomous recording units (ARUs).
 
 It works by mounting Google Drive into the notebook and loading audio clips. It needs a CSV file containing clip IDs and file paths (in Google Drive) to store input labels. 
 
 For more information, please visit https://www.kitzeslab.org/
+
+## Install as a Python Package
+
+You can now install the annotation tools as a Python package and use them in any project:
+
+```bash
+pip install git+https://github.com/LeonardoViotti/tdl-notebook.git
+```
+
+Then in your Python code or Jupyter notebook:
+
+```python
+from tdl_annotation import annotate, plot_clip
+
+# Use the annotation functions
+df = annotate(
+    scores_file='your_scores.csv',
+    valid_annotations=[0, 1, 2, 3, 4, 'u'],
+    skip_cols=['card'],
+    n_positives=5,
+    index_cols=['file', 'start_time', 'end_time']
+)
+```
+
+## Dependencies
+
+The package automatically installs these dependencies:
+- `opensoundscape>=0.9.1`
+- `pandas`
+- `numpy`
+- `matplotlib`
+- `ipython`
+
+
+
+## Example Usage
+
+### Basic Usage in a Notebook
+
+```python
+# In your annotation_notebook.ipynb
+import os
+from tdl_annotation import annotate
+
+# Set up your data paths
+data_dir = '../data'
+scores_file = os.path.join(data_dir, 'scores.csv')
+
+# Start annotation
+df = annotate(
+    scores_file=scores_file,
+    audio_dir=os.path.join(data_dir, 'audio_clips'),
+    valid_annotations=[0, 1, 2, 3, 4, 'u'],
+    skip_cols=['card'],
+    n_positives=5,
+    index_cols=['file', 'start_time', 'end_time']
+)
+
+print(f"Annotated {len(df)} clips")
+```
+
+### Advanced Usage with Custom Parameters
+
+```python
+from tdl_annotation import annotate
+
+df = annotate(
+    scores_file='clips/_scores-test.csv',
+    valid_annotations=[0, 1, 2, 3, 4, 'u'],
+    skip_cols=['card'],
+    n_positives=5,
+    index_cols=['file', 'start_time', 'end_time'],
+    dates_filter=['2023-01-01', '2023-01-02'],  # Only annotate specific dates
+    card_filter=['card1', 'card2'],              # Only annotate specific cards
+    n_sample=100,                                # Sample 100 clips randomly
+    dry_run=False,                               # Actually save annotations
+    buffer=2.0                                   # Add 2 seconds before/after each clip
+)
+```
 
 ## Notebook set-up
 

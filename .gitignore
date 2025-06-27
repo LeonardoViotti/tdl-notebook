@@ -66,3 +66,16 @@ _config.yml
 # Keep dockerfiles
 !/**/Dockerfile
 !/**/*.yml
+
+#######################
+# Python package build artifacts (explicitly ignore)
+*.egg-info/
+*.egg
+build/
+dist/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
