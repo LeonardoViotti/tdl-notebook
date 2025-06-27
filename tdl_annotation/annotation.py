@@ -27,10 +27,9 @@ def plot_clip(audio_path,
         mark_at_s (list, s): List of seconds to add vertical lines in spectrogram. Typically used to mark start and end of valid clip.
     """
     
-    audio = Audio.from_file(audio_path).bandpass(bandpass[0],bandpass[1],order=10)
-    
-    if (st is not None) & (end is not None):
-        audio = audio.trim(st,end)
+    # audio = Audio.from_file(audio_path).bandpass(bandpass[0],bandpass[1],order=10)
+    dur = end-st
+    audio = Audio.from_file(audio_path, offset = st, duration = dur).bandpass(bandpass[0],bandpass[1], order=10)
     
     # Add length markings 
     if mark_at_s is not None:
@@ -168,11 +167,12 @@ def annotate(scores_file = "_scores.csv",
              valid_annotations = ["0", "1", "u"],
              annotation_column = 'annotation',
             #  path_column = 'relative_path',
-             index_cols = 'relative_path',
+             index_cols = ['relative_path'],
              notes_column = 'notes',
              custom_annotation_column = 'additional_annotation',
              skip_cols = None,
              n_positives = 1,
+             n_negatives = 100,
              mark_at_s = None,
              sort_by = None, 
              date_filter = [], 
@@ -191,7 +191,8 @@ def annotate(scores_file = "_scores.csv",
         notes_column (str, optional): Column name for notes. Defaults to 'notes'.
         custom_annotation_column (str, optional): Column name for additional annotation. Defaults to 'additional_annotation'.
         skip_cols (str, optional): Column names for skipping clips if a positive clip already flagged.
-        n_positives (int, optional): Number of positives needed before skipping if skip_cols is provided. Defaults to 1.
+        n_positives (int, optional): Number of positives needed before skipping if skip_cols is provided. Defaults to None.
+        n_negatives (int, optional): Number of negatives needed before skipping if skip_cols is provided. Defaults to 100.
         mark_at_s (list, optional): Seconds to mark clip with vertical lines. Usually to define start and end of clip if there is padding. Defaults to None.
         sort_by (list, optional): Columns to sort scores data by. Defaults to None.
         date_filter (list (str), optional): List dates to be annotated (skip others). Defaults to empty list, [].
@@ -223,8 +224,11 @@ def annotate(scores_file = "_scores.csv",
                                dry_run = dry_run)
     
     # Add placeholder for skip intermediate columns (won't be exported)
-    scores_df['num_annotation'] = np.NaN
-    scores_df['cum_sum'] = np.NaN
+    if skip_cols:
+        scores_df['num_annotation'] = np.NaN
+        scores_df['cum_sum'] = np.NaN
+        scores_df['num_negatives'] = np.NaN
+        scores_df['cum_sum_negatives'] = np.NaN
     
     # Skip of data ot card filter provided
     if date_filter or card_filter:
@@ -271,9 +275,9 @@ def annotate(scores_file = "_scores.csv",
             if current_cum_sum is not None:
                 print(f'{current_cum_sum.item()} positives out of {n_positives} for this ' + f'{" and ".join(str(col) for col in skip_cols)}')
             
-            if len(idx) == 1: # Assume it is a path for an already trimed clip
+            if len(index_cols) == 1: # Assume it is a path for an already trimed clip
                 plot_clip(idx, mark_at_s = mark_at_s)
-            elif len(idx) == 3:
+            elif len(index_cols) == 3:
                 plot_clip(idx[0], idx[1], idx[2], mark_at_s = mark_at_s)
             else:
                 raise Exception('index_cols must be either ["path_to_clip"] or ["path_to_audio", "clip_start_time", "clip_end_time"]')
@@ -292,14 +296,20 @@ def annotate(scores_file = "_scores.csv",
                 
                 # Update the cumulative sum every iteration
                 
-                # Colum that counts all anotations greater than 0
+                # Column that counts all annotations greater than 0
                 scores_df['num_annotation'] =  (pd.to_numeric(scores_df[annotation_column], errors='coerce').fillna(0) > 0).astype(int)
                 # scores_df['num_annotation'] =  (~scores_df[annotation_column].isna()).astype(int)
-                scores_df['cum_sum'] = scores_df.groupby(skip_cols)['num_annotation'].cumsum()
                 
-                # if scores_df.at[idx, annotation_column] == '1':
+                # Column that counts all negative annoations
+                scores_df['num_negatives'] =  (pd.to_numeric(scores_df[annotation_column], errors='coerce').fillna(0) == 0).astype(int)
+
+                # Cumulative sums coluymns
+                scores_df['cum_sum'] = scores_df.groupby(skip_cols)['num_annotation'].cumsum()
+                scores_df['cum_sum_negatives'] = scores_df.groupby(skip_cols)['num_negatives'].cumsum()
+                
                 current_cum_sum = scores_df.loc[idx, 'cum_sum']
-                if (current_cum_sum > n_positives).item():
+                current_cum_negatives = scores_df.loc[idx, 'cum_sum_negatives']
+                if ((current_cum_sum >= n_positives) | (current_cum_negatives >= n_negatives)).item():
                     
                     # Create bolean series if row equal to current value of skip col
                     skip_bool_list = []
@@ -317,8 +327,11 @@ def annotate(scores_file = "_scores.csv",
                     scores_df.loc[skip_bool_series,annotation_column] = 'skipped'
                 
         if not dry_run: 
-            save_annotations_file(scores_df.drop(['skip', 'num_annotation', 'cum_sum'], axis = 1), scores_csv_path)
-            # save_annotations_file(scores_df.drop(['skip'], axis = 1), scores_csv_path)
+            if skip_cols:
+                save_annotations_file(scores_df.drop(['skip', 'num_annotation', 'cum_sum', 'num_negatives', 'cum_sum_negatives'], axis = 1), scores_csv_path)
+            else:
+                save_annotations_file(scores_df.drop(['skip'], axis = 1), scores_csv_path)
+            # save_annotations_file(scores_df, scores_csv_path)
         # Update params
         n_clips_remaining = len(scores_df[~scores_df[annotation_column].notnull()])
         valid_rows = scores_df[~scores_df[annotation_column].notnull()]
@@ -326,4 +339,4 @@ def annotate(scores_file = "_scores.csv",
     return scores_df
 
 
-# if __name__ == "__main__":
+

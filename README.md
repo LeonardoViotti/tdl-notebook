@@ -1,10 +1,164 @@
 # Top Down Listening notebook (Colab)
 
-This contains scrips and a Google Colab notebook for listening to audio clips and labeling them (Top-down listening). This is designed as part of a processing pipeline for data collected using Autonomous recording units (ARUs).
+This contains scripts and a Google Colab notebook for listening to audio clips and labeling them (Top-down listening). This is designed as part of a processing pipeline for data collected using Autonomous recording units (ARUs).
 
 It works by mounting Google Drive into the notebook and loading audio clips. It needs a CSV file containing clip IDs and file paths (in Google Drive) to store input labels. 
 
 For more information, please visit https://www.kitzeslab.org/
+
+## Installation
+
+### Option 1: Install as a Python Package (Recommended)
+
+You can now install the annotation tools as a Python package and use them in any project:
+
+```bash
+pip install git+https://github.com/LeonardoViotti/tdl-notebook.git
+```
+
+Then in your Python code or Jupyter notebook:
+
+```python
+from tdl_annotation import annotate, plot_clip
+
+# Use the annotation functions
+df = annotate(
+    scores_file='your_scores.csv',
+    valid_annotations=[0, 1, 2, 3, 4, 'u'],
+    skip_cols=['card'],
+    n_positives=5,
+    index_cols=['file', 'start_time', 'end_time']
+)
+```
+
+### Option 2: Use as Git Submodule
+
+If you prefer to use this as a git submodule in your projects:
+
+```bash
+git submodule add https://github.com/LeonardoViotti/tdl-notebook.git
+```
+
+Then import the annotation module:
+
+```python
+import sys
+sys.path.append('tdl-notebook')
+from annotation import *
+```
+
+## Available Functions
+
+- `annotate()`: Main annotation function that loops through clips
+- `plot_clip()`: Display spectrogram and play audio for a single clip
+- `user_input()`: Get user input for annotations
+- `save_annotations_file()`: Save annotations to CSV
+- `load_scores_df()`: Load scores data from CSV
+
+## Dependencies
+
+The package automatically installs these dependencies:
+- `opensoundscape>=0.9.1`
+- `pandas`
+- `numpy`
+- `matplotlib`
+- `ipython`
+
+## Example Project Structure
+
+```
+your-project/
+├── data/
+│   ├── audio_clips/
+│   └── scores.csv
+├── notebooks/
+│   └── annotation_notebook.ipynb
+└── requirements.txt
+```
+
+## Example Usage
+
+### Basic Usage in a Notebook
+
+```python
+# In your annotation_notebook.ipynb
+import os
+from tdl_annotation import annotate
+
+# Set up your data paths
+data_dir = '../data'
+scores_file = os.path.join(data_dir, 'scores.csv')
+
+# Start annotation
+df = annotate(
+    scores_file=scores_file,
+    audio_dir=os.path.join(data_dir, 'audio_clips'),
+    valid_annotations=[0, 1, 2, 3, 4, 'u'],
+    skip_cols=['card'],
+    n_positives=5,
+    index_cols=['file', 'start_time', 'end_time']
+)
+
+print(f"Annotated {len(df)} clips")
+```
+
+### Advanced Usage with Custom Parameters
+
+```python
+from tdl_annotation import annotate
+
+df = annotate(
+    scores_file='clips/_scores-test.csv',
+    valid_annotations=[0, 1, 2, 3, 4, 'u'],
+    skip_cols=['card'],
+    n_positives=5,
+    index_cols=['file', 'start_time', 'end_time'],
+    dates_filter=['2023-01-01', '2023-01-02'],  # Only annotate specific dates
+    card_filter=['card1', 'card2'],              # Only annotate specific cards
+    n_sample=100,                                # Sample 100 clips randomly
+    dry_run=False                                # Actually save annotations
+)
+```
+
+## Updating the Package
+
+To update to the latest version:
+
+```bash
+pip install --upgrade git+https://github.com/LeonardoViotti/tdl-notebook.git
+```
+
+## Development Installation
+
+If you want to install in development mode (for contributing):
+
+```bash
+git clone https://github.com/LeonardoViotti/tdl-notebook.git
+cd tdl-notebook
+pip install -e .
+```
+
+## Troubleshooting
+
+### Import Error
+If you get an import error, make sure you've installed the package:
+```bash
+pip list | grep tdl-annotation
+```
+
+### Missing Dependencies
+If you get dependency errors, install them manually:
+```bash
+pip install opensoundscape pandas numpy matplotlib ipython
+```
+
+### Version Conflicts
+If you have version conflicts, try creating a new environment:
+```bash
+conda create -n tdl-env python=3.9
+conda activate tdl-env
+pip install git+https://github.com/LeonardoViotti/tdl-notebook.git
+```
 
 ## Notebook set-up
 
