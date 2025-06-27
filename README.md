@@ -8,7 +8,7 @@ For more information, please visit https://www.kitzeslab.org/
 
 ## Installation
 
-### Option 1: Install as a Python Package (Recommended)
+### Option 1: Install as a Python Package
 
 You can now install the annotation tools as a Python package and use them in any project:
 
@@ -31,21 +31,6 @@ df = annotate(
 )
 ```
 
-### Option 2: Use as Git Submodule
-
-If you prefer to use this as a git submodule in your projects:
-
-```bash
-git submodule add https://github.com/LeonardoViotti/tdl-notebook.git
-```
-
-Then import the annotation module:
-
-```python
-import sys
-sys.path.append('tdl-notebook')
-from annotation import *
-```
 
 ## Available Functions
 
@@ -116,9 +101,11 @@ df = annotate(
     dates_filter=['2023-01-01', '2023-01-02'],  # Only annotate specific dates
     card_filter=['card1', 'card2'],              # Only annotate specific cards
     n_sample=100,                                # Sample 100 clips randomly
-    dry_run=False                                # Actually save annotations
+    dry_run=False,                               # Actually save annotations
+    buffer=2.0                                   # Add 2 seconds before/after each clip
 )
 ```
+
 
 ## Updating the Package
 

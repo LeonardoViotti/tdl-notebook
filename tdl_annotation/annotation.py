@@ -17,7 +17,8 @@ def plot_clip(audio_path,
               st = None,
               end = None,
               bandpass = [1, 10000], 
-              mark_at_s = None ):
+              mark_at_s = None,
+              buffer = None):
     """ Load file, display spectograms and play audio
     
     Args:
@@ -25,19 +26,27 @@ def plot_clip(audio_path,
         directory (str, optional): In case [audio_path] is not a full path, search [directory] for it. Defaults to None.
         bandpass (list, Hz): Length 2 list specifying a frequency range to display. Format is [lower_band, higher_band].
         mark_at_s (list, s): List of seconds to add vertical lines in spectrogram. Typically used to mark start and end of valid clip.
+        buffer (float, optional): Add buffer to beginning and end of clip (seconds). Defaults to None.
     """
     
-    # audio = Audio.from_file(audio_path).bandpass(bandpass[0],bandpass[1],order=10)
-    dur = end-st
-    audio = Audio.from_file(audio_path, offset = st, duration = dur).bandpass(bandpass[0],bandpass[1], order=10)
+    # Apply buffer if provided
+    if buffer and st is not None and end is not None:
+        st_buffered = max(0, st - buffer)
+        end_buffered = end + buffer
+        dur = end_buffered - st_buffered
+        audio = Audio.from_file(audio_path, offset=st_buffered, duration=dur).bandpass(bandpass[0], bandpass[1], order=10)
+    else:
+        # Original behavior
+        dur = end - st
+        audio = Audio.from_file(audio_path, offset=st, duration=dur).bandpass(bandpass[0], bandpass[1], order=10)
     
     # Add length markings 
     if mark_at_s is not None:
         for s in mark_at_s:
             plt.axvline(x=s, color='b')
     
-    ipd.display(Spectrogram.from_audio(audio).bandpass(bandpass[0],bandpass[1]).plot())
-    ipd.display(ipd.Audio(audio.samples,rate=audio.sample_rate,autoplay=True))
+    ipd.display(Spectrogram.from_audio(audio).bandpass(bandpass[0], bandpass[1]).plot())
+    ipd.display(ipd.Audio(audio.samples, rate=audio.sample_rate, autoplay=True))
 
 def user_input(annotations_choices, custom_annotations_dict = None, positive_annotation = '1'):
     """ Request user input given a set of options in [valid_annotations]
@@ -179,7 +188,8 @@ def annotate(scores_file = "_scores.csv",
              card_filter = [], 
              custom_annotations_dict = None,
              n_sample = None,
-             dry_run = False):
+             dry_run = False,
+             buffer = None):
     """Loops through detection scores data that hasn't been annated and aks user to input annotations.
     
     Args:
@@ -200,6 +210,7 @@ def annotate(scores_file = "_scores.csv",
         custom_annotations_dict (dict, optional): _description_. Defaults to None.
         n_sample (int, optional): Sample from valid rows. Defaults to None.
         dry_run (bool, optional):  Not export outputs. Defaults to False.
+        buffer (float, optional): Add buffer to beginning and end of clip (seconds). Defaults to None.
     
     Exports:
         Every iteration exports a file named [scores_file]_annotations.csv to [audio_dir] 
@@ -276,9 +287,9 @@ def annotate(scores_file = "_scores.csv",
                 print(f'{current_cum_sum.item()} positives out of {n_positives} for this ' + f'{" and ".join(str(col) for col in skip_cols)}')
             
             if len(index_cols) == 1: # Assume it is a path for an already trimed clip
-                plot_clip(idx, mark_at_s = mark_at_s)
+                plot_clip(idx, mark_at_s = mark_at_s, buffer = buffer)
             elif len(index_cols) == 3:
-                plot_clip(idx[0], idx[1], idx[2], mark_at_s = mark_at_s)
+                plot_clip(idx[0], idx[1], idx[2], mark_at_s = mark_at_s, buffer = buffer)
             else:
                 raise Exception('index_cols must be either ["path_to_clip"] or ["path_to_audio", "clip_start_time", "clip_end_time"]')
             
