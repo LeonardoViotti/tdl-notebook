@@ -6,9 +6,7 @@ It works by mounting Google Drive into the notebook and loading audio clips. It 
 
 For more information, please visit https://www.kitzeslab.org/
 
-## Installation
-
-### Option 1: Install as a Python Package
+## Install as a Python Package
 
 You can now install the annotation tools as a Python package and use them in any project:
 
@@ -31,15 +29,6 @@ df = annotate(
 )
 ```
 
-
-## Available Functions
-
-- `annotate()`: Main annotation function that loops through clips
-- `plot_clip()`: Display spectrogram and play audio for a single clip
-- `user_input()`: Get user input for annotations
-- `save_annotations_file()`: Save annotations to CSV
-- `load_scores_df()`: Load scores data from CSV
-
 ## Dependencies
 
 The package automatically installs these dependencies:
@@ -49,17 +38,7 @@ The package automatically installs these dependencies:
 - `matplotlib`
 - `ipython`
 
-## Example Project Structure
 
-```
-your-project/
-├── data/
-│   ├── audio_clips/
-│   └── scores.csv
-├── notebooks/
-│   └── annotation_notebook.ipynb
-└── requirements.txt
-```
 
 ## Example Usage
 
@@ -104,47 +83,6 @@ df = annotate(
     dry_run=False,                               # Actually save annotations
     buffer=2.0                                   # Add 2 seconds before/after each clip
 )
-```
-
-
-## Updating the Package
-
-To update to the latest version:
-
-```bash
-pip install --upgrade git+https://github.com/LeonardoViotti/tdl-notebook.git
-```
-
-## Development Installation
-
-If you want to install in development mode (for contributing):
-
-```bash
-git clone https://github.com/LeonardoViotti/tdl-notebook.git
-cd tdl-notebook
-pip install -e .
-```
-
-## Troubleshooting
-
-### Import Error
-If you get an import error, make sure you've installed the package:
-```bash
-pip list | grep tdl-annotation
-```
-
-### Missing Dependencies
-If you get dependency errors, install them manually:
-```bash
-pip install opensoundscape pandas numpy matplotlib ipython
-```
-
-### Version Conflicts
-If you have version conflicts, try creating a new environment:
-```bash
-conda create -n tdl-env python=3.9
-conda activate tdl-env
-pip install git+https://github.com/LeonardoViotti/tdl-notebook.git
 ```
 
 ## Notebook set-up
