@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tdl-annotation"
+version = "0.1.0"
+description = "Top Down Listening annotation tools for audio clip labeling"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Leonardo Viotti", email = "your.email@example.com"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+requires-python = ">=3.7"
+dependencies = [
+    "opensoundscape>=0.9.1",
+    "pandas",
+    "numpy",
+    "matplotlib",
+    "ipython",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "flake8",
+]
+
+[project.urls]
+Homepage = "https://github.com/LeonardoViotti/tdl-notebook"
+Repository = "https://github.com/LeonardoViotti/tdl-notebook" 

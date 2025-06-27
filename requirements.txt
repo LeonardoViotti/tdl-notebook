@@ -1,0 +1,5 @@
+opensoundscape>=0.9.1
+pandas
+numpy
+matplotlib
+ipython 

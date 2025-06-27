@@ -18,6 +18,11 @@ _config.yml
 !CONTRIBUTING.md
 !LICENSE
 
+# Python package configuration files
+!pyproject.toml
+!MANIFEST.in
+!requirements.txt
+
 #######################
 # For performance reasons, if a folder is already ignored, then
 # GitHub does not check the content for that folder for matches
