@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import IPython.display as ipd
 import os
 import time
+import tempfile
+from PIL import Image
 
 
 #-----------------------------------------------------------------------------------------------------
@@ -358,6 +360,263 @@ def annotate(scores_file = "_scores.csv",
         valid_rows = scores_df[~scores_df[annotation_column].notnull()]
     
     return scores_df
+
+def annotate_bbox(scores_file = "_scores.csv",
+                  audio_dir = None, 
+                  valid_annotations = ["0", "1", "u"],
+                  annotation_column = 'annotation',
+                  index_cols = ['relative_path'],
+                  notes_column = 'notes',
+                  custom_annotation_column = 'additional_annotation',
+                  bbox_columns = ['bbox_x1', 'bbox_y1', 'bbox_x2', 'bbox_y2'],
+                  mark_at_s = None,
+                  sort_by = None, 
+                  date_filter = [], 
+                  card_filter = [], 
+                  custom_annotations_dict = None,
+                  n_sample = None,
+                  dry_run = False,
+                  buffer = None):
+    """Loops through detection scores data and allows interactive drawing of bounding boxes on spectrograms.
+    
+    Args:
+        scores_file (str, optional): Detection scores CSV file path or filename if it is in [audio_dir]. Defaults to "_scores.csv".
+        audio_dir (str): If using relative file paths and [scores_file] in [audio_dir]. It should be a directory containing audio clips to be annotated.  Defaults to None.
+        valid_annotations (list, optional): List of valid options for user. Defaults to ["0", "1", "u"].
+        annotation_column (str, optional): Annotation column name. Defaults to 'annotation'.
+        index_cols (str, optional): Either ["path_to_clip"] or ["path_to_audio", "clip_start_time", "clip_end_time"]. Defaults to 'relative_path'.
+        notes_column (str, optional): Column name for notes. Defaults to 'notes'.
+        custom_annotation_column (str, optional): Column name for additional annotation. Defaults to 'additional_annotation'.
+        bbox_columns (list, optional): Column names for bounding box coordinates [x1, y1, x2, y2]. Defaults to ['bbox_x1', 'bbox_y1', 'bbox_x2', 'bbox_y2'].
+        mark_at_s (list, optional): Seconds to mark clip with vertical lines. Usually to define start and end of clip if there is padding. Defaults to None.
+        sort_by (list, optional): Columns to sort scores data by. Defaults to None.
+        date_filter (list (str), optional): List dates to be annotated (skip others). Defaults to empty list, [].
+        card_filter (list (str), optional): List cards to be annotated (skip others). Defaults to empty list, [].
+        custom_annotations_dict (dict, optional): Dictionary containing additional annotation options. Defaults to None.
+        n_sample (int, optional): Sample from valid rows. Defaults to None.
+        dry_run (bool, optional): Not export outputs. Defaults to False.
+        buffer (float, optional): Add buffer to beginning and end of clip (seconds). Defaults to None.
+    
+    Exports:
+        Every iteration exports a file named [scores_file]_bbox_annotations.csv to [audio_dir] 
+        
+    Returns:
+        pd.DataFrame with bounding box annotations
+    """
+    
+    try:
+        from jupyter_bbox_widget import BBoxWidget
+    except ImportError:
+        print("jupyter_bbox_widget not found. Please install it with: pip install jupyter-bbox-widget")
+        return None
+    
+    # If using relative file paths
+    if audio_dir:
+        scores_csv_path = os.path.join(audio_dir, scores_file)
+    else:
+        scores_csv_path = scores_file
+    
+    # Load the scores dataframe
+    scores_df = pd.read_csv(scores_csv_path)
+    scores_df = scores_df.set_index(index_cols)
+    
+    # Create bbox annotations dataframe
+    bbox_annotations_path = f"{scores_csv_path.split('.')[0]}_bbox_annotations.csv"
+    
+    try:
+        bbox_df = pd.read_csv(bbox_annotations_path)
+        bbox_df = bbox_df.set_index(index_cols)
+        bbox_annotations_exist = True
+    except:
+        # Create empty dataframe with proper columns
+        bbox_df = pd.DataFrame(columns=bbox_columns + [annotation_column, custom_annotation_column, notes_column])
+        bbox_annotations_exist = False
+    
+    # Skip of data or card filter provided
+    if date_filter or card_filter:
+        scores_df['skip'] = (scores_df['date'].isin(date_filter)) | (scores_df['card'].isin(card_filter))
+    else:
+        scores_df['skip'] = False
+    
+    # Get valid rows (not skipped)
+    valid_rows = scores_df[~scores_df['skip']]
+    if n_sample is not None:
+        valid_rows = valid_rows.sample(n_sample)
+    
+    # Print total variables
+    n_clips = len(scores_df)
+    n_clips_filtered = len(valid_rows)
+    
+    print(f"Starting interactive bbox annotation for {n_clips_filtered} clips")
+    
+    # Loop through clips
+    for i, (idx, row) in enumerate(valid_rows.iterrows()):
+        # Clear previous plot if any
+        ipd.clear_output(wait=True)
+        
+        # Print progress
+        print(f'Clip {i+1} of {n_clips_filtered}: {idx}')
+        
+        # Load audio and create spectrogram
+        if len(index_cols) == 1:  # Assume it is a path for an already trimmed clip
+            audio_path = idx
+            st, end = None, None
+        elif len(index_cols) == 3:
+            audio_path = idx[0]
+            st, end = idx[1], idx[2]
+        else:
+            raise Exception('index_cols must be either ["path_to_clip"] or ["path_to_audio", "clip_start_time", "clip_end_time"]')
+        
+        # Apply buffer if provided
+        if buffer and st is not None and end is not None:
+            st_buffered = max(0, st - buffer)
+            end_buffered = end + buffer
+            dur = end_buffered - st_buffered
+            audio = Audio.from_file(audio_path, offset=st_buffered, duration=dur)
+        else:
+            if st is not None and end is not None:
+                dur = end - st
+                audio = Audio.from_file(audio_path, offset=st, duration=dur)
+            else:
+                audio = Audio.from_file(audio_path)
+        
+        # Create spectrogram
+        spec = Spectrogram.from_audio(audio)
+        
+        # Convert spectrogram to image for the widget
+        # Create a temporary image file from the spectrogram
+        import tempfile
+        import matplotlib.pyplot as plt
+        
+        # Create spectrogram plot with proper settings
+        plt.figure(figsize=(12, 8))
+        spec.plot()
+        plt.title(f"Clip: {idx}")
+        
+        # Add length markings if provided
+        if mark_at_s is not None:
+            for s in mark_at_s:
+                plt.axvline(x=s, color='b', linestyle='--')
+        
+        # Get the current axes to understand the coordinate system
+        ax = plt.gca()
+        x_lim = ax.get_xlim()
+        y_lim = ax.get_ylim()
+        
+        # Debug: print spectrogram info
+        try:
+            spec_data = spec.values
+            print(f"Spectrogram shape: {spec_data.shape}")
+        except AttributeError:
+            try:
+                spec_data = spec.data
+                print(f"Spectrogram shape: {spec_data.shape}")
+            except AttributeError:
+                spec_data = np.array(spec)
+                print(f"Spectrogram shape: {spec_data.shape}")
+        
+        print(f"Spectrogram time range: {spec.times[0]:.2f} to {spec.times[-1]:.2f} seconds")
+        print(f"Spectrogram frequency range: {spec.frequencies[0]:.2f} to {spec.frequencies[-1]:.2f} Hz")
+        print(f"Plot axes limits - X: {x_lim}, Y: {y_lim}")
+        
+        # Save to temporary file with high quality
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+            plt.savefig(tmp_file.name, bbox_inches='tight', pad_inches=0.1, dpi=150, facecolor='white')
+            image_path = tmp_file.name
+        
+        plt.close()
+        
+        # Verify the image was created and get its dimensions
+        try:
+            img = Image.open(image_path)
+            print(f"Saved image dimensions: {img.size[0]} x {img.size[1]} pixels")
+            print(f"Image file path: {image_path}")
+        except Exception as e:
+            print(f"Error reading saved image: {e}")
+        
+        # Display spectrogram with bbox widget
+        print("Draw bounding boxes on the spectrogram below:")
+        print("Instructions:")
+        print("- Click and drag to draw rectangles")
+        print("- Double-click to delete a box")
+        print("- Press 'Done' when finished drawing")
+        print(f"Coordinate system: X (time): {x_lim[0]:.2f} to {x_lim[1]:.2f} seconds")
+        print(f"Coordinate system: Y (frequency): {y_lim[0]:.2f} to {y_lim[1]:.2f} Hz")
+        
+        # Create bbox widget
+        bbox_widget = BBoxWidget(
+            image=image_path,  # The spectrogram image file path
+            classes=[str(x) for x in valid_annotations]  # Convert all to strings
+        )
+        
+        # Display the widget
+        display(bbox_widget)
+        
+        # Wait for user to finish drawing
+        print("\nDraw your bounding boxes above, then press Enter to continue...")
+        input()
+        
+        # Get the drawn boxes
+        bboxes = bbox_widget.bboxes
+        
+        if not bboxes:
+            print("No bounding boxes drawn. Skipping this clip.")
+            continue
+        
+        print(f"Found {len(bboxes)} bounding boxes. Annotating each one...")
+        
+        # For each bounding box, get annotation
+        for bbox_idx, bbox in enumerate(bboxes):
+            print(f"\nAnnotating bounding box {bbox_idx + 1} of {len(bboxes)}")
+            
+            # Convert widget coordinates to spectrogram coordinates
+            # Widget coordinates are in pixels, need to convert to spectrogram coordinates
+            img_width = bbox_widget.image_width
+            img_height = bbox_widget.image_height
+            
+            print(f"Widget image dimensions: {img_width} x {img_height} pixels")
+            print(f"Widget box coordinates: x={bbox['x']:.1f}, y={bbox['y']:.1f}, w={bbox['width']:.1f}, h={bbox['height']:.1f}")
+            
+            # Convert from widget pixel coordinates to spectrogram coordinates
+            x1 = x_lim[0] + (bbox['x'] / img_width) * (x_lim[1] - x_lim[0])
+            y1 = y_lim[0] + (bbox['y'] / img_height) * (y_lim[1] - y_lim[0])
+            x2 = x_lim[0] + ((bbox['x'] + bbox['width']) / img_width) * (x_lim[1] - x_lim[0])
+            y2 = y_lim[0] + ((bbox['y'] + bbox['height']) / img_height) * (y_lim[1] - y_lim[0])
+            
+            print(f"Converted coordinates: x1={x1:.2f}s, y1={y1:.2f}Hz, x2={x2:.2f}s, y2={y2:.2f}Hz")
+            
+            # Get annotation for this bounding box
+            annotation, other_annotation, notes = user_input(
+                valid_annotations, 
+                custom_annotations_dict=custom_annotations_dict, 
+                positive_annotation='1'
+            )
+            
+            # Add to dataframe
+            bbox_row = pd.DataFrame({
+                bbox_columns[0]: [x1],
+                bbox_columns[1]: [y1], 
+                bbox_columns[2]: [x2],
+                bbox_columns[3]: [y2],
+                annotation_column: [annotation],
+                custom_annotation_column: [other_annotation],
+                notes_column: [notes]
+            }, index=[idx])
+            
+            bbox_df = pd.concat([bbox_df, bbox_row])
+        
+        # Save after each clip
+        if not dry_run:
+            bbox_df.to_csv(bbox_annotations_path)
+            print(f"Saved {len(bbox_df)} bounding box annotations to {bbox_annotations_path}")
+        
+        # Ask if user wants to continue
+        continue_annotation = input("\nPress Enter to continue to next clip, or 'q' to quit: ")
+        if continue_annotation.lower() == 'q':
+            break
+    
+    print(f"\nAnnotation complete! Total bounding boxes: {len(bbox_df)}")
+    return bbox_df
 
 
 
