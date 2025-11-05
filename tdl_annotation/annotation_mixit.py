@@ -99,19 +99,19 @@ def plot_clip_mixit(audio_path,
             else:
                 raise TypeError(f"Unknown separated source type: {type(src)}. Expected Audio, (samples,sr), or ndarray.")
 
-    # Truncate if model returned more than allowed
-    total_sources = len(clip_separated)
-    n_sources = min(total_sources, max_sources)
-    if total_sources > n_sources:
-        print(f"Model returned {total_sources} sources; plotting first {n_sources}. Increase max_sources to show more.")
 
-    if n_sources == 0:
-        print("Model returned no separated sources to plot.")
-        return
+    # Truncate if model returned more than allowed (we'll also plot the original unseparated clip)
+    total_sources = len(clip_separated)
+    n_sep = min(total_sources, max_sources)
+    if total_sources > n_sep:
+        print(f"Model returned {total_sources} sources; plotting first {n_sep}. Increase max_sources to show more.")
+
+    # We'll plot original + the first n_sep separated sources
+    n_plot = 1 + n_sep
 
     # --- compute grid layout ---
-    n_cols = int(np.ceil(np.sqrt(n_sources)))
-    n_rows = int(np.ceil(n_sources / n_cols))
+    n_cols = int(np.ceil(np.sqrt(n_plot)))
+    n_rows = int(np.ceil(n_plot / n_cols))
 
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(4 * n_cols, 3.5 * n_rows))
     # normalize axes to flat list for consistent indexing
@@ -120,14 +120,28 @@ def plot_clip_mixit(audio_path,
     else:
         axes_flat = [axes]
 
-    # --- plot each separated source spectrogram ---
-    for i in range(n_sources):
+    # --- plot original unseparated audio as first subplot ---
+    spec_orig = Spectrogram.from_audio(audio, window_samples=window_samples).bandpass(bandpass[0], bandpass[1])
+    y = spec_orig.frequencies
+    t = spec_orig.times
+    S = spec_orig.spectrogram
+    ax0 = axes_flat[0]
+    ax0.pcolormesh(t, y, S, shading="auto", cmap=cmap, vmin=vmin, vmax=vmax)
+    ax0.set_title("Original")
+    ax0.set_xlabel("Time (sec)")
+    ax0.set_ylabel("Frequency (Hz)")
+    if mark_at_s is not None:
+        for s in mark_at_s:
+            ax0.axvline(x=s, color='b')
+
+    # --- plot each separated source spectrogram (following the original) ---
+    for i in range(n_sep):
         src_audio = clip_separated[i]
         spec = Spectrogram.from_audio(src_audio, window_samples=window_samples).bandpass(bandpass[0], bandpass[1])
         y = spec.frequencies
         t = spec.times
         S = spec.spectrogram
-        ax = axes_flat[i]
+        ax = axes_flat[i + 1]
         im = ax.pcolormesh(t, y, S, shading="auto", cmap=cmap, vmin=vmin, vmax=vmax)
         ax.set_title(f"Source {i+1}")
         ax.set_xlabel("Time (sec)")
@@ -138,7 +152,7 @@ def plot_clip_mixit(audio_path,
                 ax.axvline(x=s, color='b')
 
     # hide any unused axes
-    for j in range(n_sources, len(axes_flat)):
+    for j in range(n_plot, len(axes_flat)):
         axes_flat[j].set_visible(False)
 
     plt.tight_layout()
@@ -162,7 +176,7 @@ def user_input_mixit(valid_choices=None, sources_column='mixit_sources', shift_c
         valid_choices = [str(i) for i in range(1, 9)]
 
     while True:
-        sources_raw = input(f"Enter sources as comma-separated integers 1-8 (e.g. 1,2,3) or press Enter to skip:")
+        sources_raw = input(f"Select channels as comma-separated integers 1-8 (e.g. 1,2,3) or press Enter to skip:")
         sources_raw = str(sources_raw).strip()
         if sources_raw == "":
             sources_str = ''
@@ -179,7 +193,7 @@ def user_input_mixit(valid_choices=None, sources_column='mixit_sources', shift_c
 
     # shift value (numeric) optional
     while True:
-        shift_raw = input("Enter numeric shift value (or press Enter to skip): ").strip()
+        shift_raw = input("Centralizatoin: Enter shift in seconds, negatives to shift left. (or press Enter to skip): ").strip()
         if shift_raw == '':
             shift_val = np.NaN
             break
