@@ -12,6 +12,13 @@ from .annotation import (
     load_scores_df,
     annotate,
 )
+from .annotation_mixit import (
+    plot_clip_mixit,
+    user_input_mixit,
+    save_annotations_file as save_mixit_annotations_file,
+    load_scores_df as load_mixit_scores_df,
+    annotate_mixit,
+)
 
 __version__ = "0.1.0"
 __author__ = "Leonardo Viotti"
@@ -22,4 +29,10 @@ __all__ = [
     "save_annotations_file",
     "load_scores_df",
     "annotate",
+    # mixit variants
+    "plot_clip_mixit",
+    "user_input_mixit",
+    "save_mixit_annotations_file",
+    "load_mixit_scores_df",
+    "annotate_mixit",
 ] 
